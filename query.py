@@ -9,6 +9,9 @@ import urllib, urlparse, string, time
 import urllib2, base64, json
 from urlparse import urlparse
 
+# Import modules
+from xml.dom import minidom
+
 def queryGithub(searchTerm):
       username = 'osspal'
       password = 'Practicum2017Osspal@CMU'
@@ -36,7 +39,7 @@ def queryGithub(searchTerm):
       # e.g. 'https://github.com/electron/electron'
       basicReq = urllib2.Request("https://api.github.com/repos/" + owner + "/" + repoName)
       base64string = base64.b64encode('%s:%s' % (username, password))
-      basicReq.add_header("Authorization", "Basic %s" % base64string)   
+      basicReq.add_header("Authorization", "Basic %s" % base64string)
       basicRes = urllib2.urlopen(basicReq)
 
       # e.g. 'https://api.github.com/repos/electron/electron/releases/latest '
@@ -48,7 +51,7 @@ def queryGithub(searchTerm):
             latestJson = latestRes.read();
       except urllib2.HTTPError as err:
             if err.code == 404:
-                  #print 'Unable to retrive latest release info.'     
+                  #print 'Unable to retrive latest release info.'
                   latestJson = '{"published_at":"NA"}'
 
       # e.g. 'https://api.github.com/repos/$owner/$repoName/license'
@@ -87,7 +90,7 @@ def queryGithub(searchTerm):
       if number_of_stars >= 100:
             map["number_of_stars_filter"] = "√"
       else:
-            map["number_of_stars_filter"] = "×" 
+            map["number_of_stars_filter"] = "×"
 
       map["number_of_forks"] = number_of_forks
       if number_of_forks >= 100:
@@ -103,13 +106,13 @@ def queryGithub(searchTerm):
       if open_issues_count >= 5:
             map["open_issues_count_filter"] = "√"
       else:
-            map["open_issues_count_filter"] = "×" 
+            map["open_issues_count_filter"] = "×"
 
       map["subscribers_count"] = subscribers_count
       if subscribers_count >= 50:
             map["subscribers_count_filter"] = "√"
       else:
-            map["subscribers_count_filter"] = "×" 
+            map["subscribers_count_filter"] = "×"
 
       #print json.dumps({"result":map})
       return json.dumps({"result": map})
@@ -128,7 +131,7 @@ def queryOpenHub(queryTerm):
     try:
           map["query_openhub_success"] = "succeeded"
           project_id = soup.find('id').get_text()
-    except: 
+    except:
           # query openhub failed, quit
           map["query_openhub_success"] = "failed"
           project_id = None
@@ -156,7 +159,7 @@ def queryOpenHub(queryTerm):
             project_total_contributor_count = openhub_soup.find('total_contributor_count').get_text()
       except:
             project_total_contributor_count = None
-      
+
       try:
             project_twelve_month_commit_count = openhub_soup.find('twelve_month_commit_count').get_text()
       except:
@@ -182,6 +185,10 @@ def queryOpenHub(queryTerm):
             project_project_activity_index_description = openhub_soup.find('project_activity_index').find('description').get_text()
       except:
             project_project_activity_index_description = None
+      try:
+            project_user_count = openhub_soup.find('user_count').get_text()
+      except:
+            project_user_count = None
 
       map["project_html_url"] = project_html_url
       map["project_twelve_month_contributor_count"] = project_twelve_month_contributor_count
@@ -212,12 +219,39 @@ def queryOpenHub(queryTerm):
       map["project_main_language_name"] = project_main_language_name
       map["project_license"] = project_license
       map["project_project_activity_index_description"] = project_project_activity_index_description
+      map["project_user_count"] = project_user_count
+
+      def query_man_month():
+          man_month = 0
+          size_facts_query_url = "https://www.openhub.net/projects/" + str(project_id) + "/analyses/latest/size_facts" + ".xml?api_key=" + api_key
+          print size_facts_query_url
+          dom = minidom.parse(urllib2.urlopen(size_facts_query_url)) # parse the data
+
+          sizeFact = dom.getElementsByTagName('size_fact')
+          node = sizeFact[-1]
+
+          manMonthList = node.getElementsByTagName('man_months')
+          m = manMonthList[-1]
+
+          total = m.childNodes[0].nodeValue
+          man_month = int(total)
+
+          return man_month
+
+      try:
+            project_man_month = query_man_month()
+      except:
+            project_man_month = None
+
+      map["project_man_month"] = project_man_month # test
 
     print json.dumps({"result": map})
 
+
+
+
     return json.dumps({"result": map})
 
-    # print project_twelve_month_contributor_count
     # print project_total_contributor_count
     # print project_twelve_month_commit_count
     # print project_total_commit_count
